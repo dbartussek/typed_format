@@ -1,0 +1,96 @@
+WHITESPACE = _{ WHITE_SPACE }
+COMMENT = _{
+    ("//" ~ (!NEWLINE ~ ANY)* ~ NEWLINE )
+    | ("/*" ~ (!"*/" ~ ANY)* ~ "*/")
+}
+
+identifier = {
+    (ASCII_ALPHA ~ (ASCII_ALPHANUMERIC | "_")*)
+    | ("_" ~ (ASCII_ALPHANUMERIC | "_")*)
+}
+
+generic_identifier = { identifier ~ generics? }
+generics = { "<" ~ (generic_type ~ ",")* ~ generic_type ~ ">" }
+type_identifier = { generic_identifier ~ ("::" ~ generic_identifier)* }
+
+array = { "[" ~ type_identifier ~ ";" ~ array_size ~ "]" }
+array_size = { "0" | (ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*) }
+
+generic_type = { type_identifier | array }
+
+boolean = _{ bool_true | bool_false }
+bool_true = { "true" }
+bool_false = { "false" }
+
+generic_escape = _{ "\\" ~ ("\\" | "n" | "r" | "t" | "0") }
+
+string = ${ "\"" ~ string_inner ~ "\"" }
+string_inner = @{ string_char* }
+string_char = _{
+    !("\"" | "\\") ~ ANY
+    | generic_escape
+    | "\\" ~ "\""
+    | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
+}
+
+value_char = ${ "'" ~ char_inner ~ "'"}
+char_inner = {
+    !("'" | "\\") ~ ANY
+    | generic_escape
+    | "\\" ~ "'"
+    | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
+}
+
+raw_string = ${
+    "r" ~ PUSH("#"*) ~ "\""
+    ~ raw_string_inner
+    ~ "\"" ~ POP
+}
+raw_string_inner = @{
+    (
+        !("\"" ~ PEEK)
+        ~ ANY
+    )*
+}
+
+number = @{
+    "-"?
+    ~ ("0" | ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*)
+    ~ ("." ~ ASCII_DIGIT*)?
+    ~ (^"e" ~ ("+" | "-")? ~ ASCII_DIGIT+)?
+}
+
+unit = { "(" ~ ")" }
+
+tuple = { "(" ~ tuple_inner ~ ")" }
+tuple_inner = _{ ( value ~ "," )* ~ value? }
+tuple_struct = { type_identifier ~ tuple }
+list = { "[" ~ tuple_inner ~ "]" }
+
+named_tuple = { "(" ~ (named_tuple_entry ~ ",")* ~ named_tuple_entry? ~ ")"}
+named_tuple_entry = { identifier ~ ":" ~ value }
+named_struct = { type_identifier ~ named_tuple }
+
+map_entry = { value ~ ":" ~ value }
+map = { "{" ~ (map_entry ~ ",")* ~ map_entry? ~ "}" }
+
+value = _{
+    unit
+
+    | boolean
+
+    | tuple_struct | tuple
+    | named_struct
+
+    | map
+    | list
+
+    | type_identifier
+
+    | string | raw_string
+    | value_char
+
+    | number
+}
+
+main = _{ SOI ~ value ~ EOI}
