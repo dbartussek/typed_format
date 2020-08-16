@@ -1,5 +1,5 @@
 use crate::value::{
-    identifier::{Identifier, TypeIdentifier},
+    types::{GenericIdentifier, Identifier, Type, TypeIdentifier},
     Value,
 };
 use anyhow::{anyhow, Context, Error};
@@ -85,7 +85,7 @@ impl<'value, 'de> Deserializer<'de> for ValueDeserializer<'value> {
             Value::Char(_) => self.deserialize_char(visitor),
             Value::String(_) => self.deserialize_str(visitor),
             Value::Number(_) => unimplemented!(),
-            Value::Identifier(_) => unimplemented!(),
+            Value::Type(_) => unimplemented!(),
             Value::List(_) => unimplemented!(),
             Value::Tuple(_) => unimplemented!(),
             Value::Map(_) => unimplemented!(),
@@ -420,15 +420,31 @@ impl<'value, 'de> Deserializer<'de> for ValueDeserializer<'value> {
     {
         match self.value {
             Value::TupleStruct(identifier, _)
-            | Value::Struct(identifier, _)
-            | Value::Identifier(identifier) => match identifier {
-                TypeIdentifier::Struct(identifier)
-                | TypeIdentifier::Variant(_, identifier) => {
-                    visitor.visit_str(identifier.0.as_str())
-                },
+            | Value::Struct(identifier, _) => {
+                match identifier.segments.last() {
+                    Some(identifier) => {
+                        return visitor
+                            .visit_str(identifier.identifier.0.as_str())
+                    },
+                    _ => {},
+                }
             },
-            other => Err(anyhow!("{:?} is not Identifier", other).into()),
+            Value::Type(t) => match t {
+                Type::TypeIdentifier(identifier) => {
+                    match identifier.segments.last() {
+                        Some(identifier) => {
+                            return visitor
+                                .visit_str(identifier.identifier.0.as_str())
+                        },
+                        _ => {},
+                    }
+                },
+                _ => {},
+            },
+            _ => {},
         }
+
+        Err(anyhow!("{:?} is not Identifier", self.value).into())
     }
 
     fn deserialize_ignored_any<V>(
@@ -559,8 +575,12 @@ impl<'lt, 'de> MapAccess<'de> for ValueDeserializerStruct<'lt> {
         match self.current_key.take() {
             None => Ok(None),
             Some(value) => {
-                let value =
-                    Value::Identifier(TypeIdentifier::Struct(value.clone()));
+                let value = Value::Type(Type::TypeIdentifier(TypeIdentifier {
+                    segments: vec![GenericIdentifier {
+                        identifier: value.clone(),
+                        generics: None,
+                    }],
+                }));
                 let value = &value;
                 Ok(Some(seed.deserialize(ValueDeserializer { value })?))
             },

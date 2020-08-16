@@ -1,14 +1,14 @@
 pub mod deserializer;
-pub mod identifier;
 pub(crate) mod parser;
 pub mod printer;
 pub mod serializer;
+pub mod types;
 
 use crate::value::{
     deserializer::{ValueDeserializer, ValueDeserializerError},
-    identifier::{Identifier, TypeIdentifier},
     printer::ValuePrinter,
     serializer::{ValueSerializer, ValueSerializerError},
+    types::{Identifier, Type, TypeIdentifier},
 };
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -21,7 +21,7 @@ pub enum Value {
     String(String),
     Number(String),
 
-    Identifier(TypeIdentifier),
+    Type(Type),
 
     List(Vec<Value>),
     Tuple(Vec<Value>),
@@ -47,7 +47,7 @@ impl Value {
     }
 
     pub fn parse(string: &str) -> anyhow::Result<Self> {
-        parser::parse_main(string)
+        parser::parse_main_value(string)
     }
 
     pub fn deserialize<'lt, T>(&'lt self) -> Result<T, ValueDeserializerError>

@@ -46,7 +46,7 @@ impl<'indent> ValuePrinter<'indent> {
             Value::Char(c) => write!(w, "'{}'", escape_char(*c)),
             Value::String(s) => write!(w, "\"{}\"", escape_string(&s)),
             Value::Number(v) => write!(w, "{}", v),
-            Value::Identifier(v) => write!(w, "{}", v),
+            Value::Type(v) => write!(w, "{}", v),
             Value::List(list) => {
                 write!(w, "[")?;
                 self.write_items_list(w, &list)?;

@@ -4,6 +4,8 @@ COMMENT = _{
     | ("/*" ~ (!"*/" ~ ANY)* ~ "*/")
 }
 
+/// Type parsing
+
 identifier = {
     (ASCII_ALPHA ~ (ASCII_ALPHANUMERIC | "_")*)
     | ("_" ~ (ASCII_ALPHANUMERIC | "_")*)
@@ -13,18 +15,26 @@ generic_identifier = { identifier ~ generics? }
 generics = { "<" ~ (generic_type ~ ",")* ~ generic_type ~ ">" }
 type_identifier = { generic_identifier ~ ("::" ~ generic_identifier)* }
 
-array = { "[" ~ type_identifier ~ ";" ~ array_size ~ "]" }
-array_size = { "0" | (ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*) }
+array_type = { "[" ~ type_identifier ~ ";" ~ array_size ~ "]" }
+array_size = @{ "0" | (ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*) }
 
-generic_type = { type_identifier | array }
+tuple_type = { "(" ~ (generic_type ~ ",")* ~ generic_type? ~ ")" }
+
+generic_type = { type_identifier | array_type | tuple_type }
+
+/// Bool values
 
 boolean = _{ bool_true | bool_false }
 bool_true = { "true" }
 bool_false = { "false" }
 
+/// Option values
+
 option = _{ some | none }
 some = { "Some" ~ "(" ~ value ~ ")" }
 none = { "None" }
+
+/// Strings and chars
 
 generic_escape = _{ "\\" ~ ("\\" | "n" | "r" | "t" | "0") }
 
@@ -57,12 +67,16 @@ raw_string_inner = @{
     )*
 }
 
+/// Numbers
+
 number = @{
     "-"?
     ~ ("0" | ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*)
     ~ ("." ~ ASCII_DIGIT*)?
     ~ (^"e" ~ ("+" | "-")? ~ ASCII_DIGIT+)?
 }
+
+/// Tuples and lists
 
 unit = { "(" ~ ")" }
 
@@ -71,12 +85,18 @@ tuple_inner = _{ ( value ~ "," )* ~ value? }
 tuple_struct = { type_identifier ~ tuple }
 list = { "[" ~ tuple_inner ~ "]" }
 
+/// Structs
+
 named_tuple = { "(" ~ (named_tuple_entry ~ ",")* ~ named_tuple_entry? ~ ")"}
 named_tuple_entry = { identifier ~ ":" ~ value }
 named_struct = { type_identifier ~ named_tuple }
 
+/// Map
+
 map_entry = { value ~ ":" ~ value }
 map = { "{" ~ (map_entry ~ ",")* ~ map_entry? ~ "}" }
+
+/// The one value rule
 
 value = _{
     unit
@@ -84,13 +104,15 @@ value = _{
     | boolean
     | option
 
-    | tuple_struct | tuple
+    | tuple_struct
     | named_struct
+
+    | generic_type
+
+    | tuple
 
     | map
     | list
-
-    | type_identifier
 
     | string | raw_string
     | value_char
@@ -98,4 +120,8 @@ value = _{
     | number
 }
 
-main = _{ SOI ~ value ~ EOI}
+/// Entry rules
+
+main_value = _{ SOI ~ value ~ EOI}
+main_type_identifier = _{ SOI ~ type_identifier ~ EOI}
+main_type = _{ SOI ~ generic_type ~ EOI}

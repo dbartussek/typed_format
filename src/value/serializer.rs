@@ -127,7 +127,7 @@ impl Serializer for ValueSerializer {
         self,
         name: &'static str,
     ) -> Result<Self::Ok, Self::Error> {
-        Ok(Value::Identifier(name.into()))
+        Ok(Value::Type(name.into()))
     }
 
     fn serialize_unit_variant(
@@ -136,7 +136,7 @@ impl Serializer for ValueSerializer {
         _: u32,
         variant: &'static str,
     ) -> Result<Self::Ok, Self::Error> {
-        Ok(Value::Identifier((name, variant).into()))
+        Ok(Value::Type((name, variant).into()))
     }
 
     fn serialize_newtype_struct<T: ?Sized>(

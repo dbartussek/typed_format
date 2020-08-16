@@ -1,5 +1,5 @@
 use crate::value::{
-    identifier::{Identifier, TypeIdentifier},
+    types::{GenericIdentifier, Identifier, Type, TypeIdentifier},
     Value,
 };
 use anyhow::anyhow;
@@ -19,7 +19,7 @@ fn parse_identifier(pair: Pair<Rule>) -> anyhow::Result<Identifier> {
 fn parse_type_identifier(pair: Pair<Rule>) -> anyhow::Result<TypeIdentifier> {
     fn parse_generic_identifier(
         pair: Pair<Rule>,
-    ) -> anyhow::Result<Identifier> {
+    ) -> anyhow::Result<GenericIdentifier> {
         assert_eq!(pair.as_rule(), Rule::generic_identifier);
 
         let mut pairs = pair.into_inner();
@@ -33,28 +33,30 @@ fn parse_type_identifier(pair: Pair<Rule>) -> anyhow::Result<TypeIdentifier> {
             ));
         }
 
-        Ok(identifier)
+        Ok(GenericIdentifier {
+            identifier,
+            generics: None,
+        })
     }
 
-    let mut segments = pair
+    let segments = pair
         .into_inner()
         .map(parse_generic_identifier)
-        .collect::<anyhow::Result<Vec<Identifier>>>()?;
+        .collect::<anyhow::Result<Vec<GenericIdentifier>>>()?;
 
-    Ok(match segments.len() {
-        1 => TypeIdentifier::Struct(segments.pop().unwrap()),
-        2 => {
-            let variant = segments.pop().unwrap();
-            let e = segments.pop().unwrap();
+    Ok(TypeIdentifier { segments })
+}
 
-            TypeIdentifier::Variant(e, variant)
+fn parse_generic_type(pair: Pair<Rule>) -> anyhow::Result<Type> {
+    assert_eq!(pair.as_rule(), Rule::generic_type);
+
+    let inner = pair.into_inner().next().unwrap();
+
+    Ok(match inner.as_rule() {
+        Rule::type_identifier => {
+            Type::TypeIdentifier(parse_type_identifier(inner)?)
         },
-        _ => {
-            return Err(anyhow!(
-                "Complex identifiers are not supported {:?}",
-                segments
-            ))
-        },
+        _ => return Err(anyhow!("Unknown type: {:#?}", &inner)),
     })
 }
 
@@ -241,16 +243,36 @@ fn parse_value(pair: Pair<Rule>) -> anyhow::Result<Value> {
         Rule::named_struct => parse_named_struct(pair),
         Rule::map => parse_map(pair),
 
-        Rule::type_identifier => {
-            Ok(Value::Identifier(parse_type_identifier(pair)?))
-        },
+        Rule::generic_type => Ok(Value::Type(parse_generic_type(pair)?)),
 
         _ => panic!("Unknown value {:#?}", pair),
     }
 }
 
-pub fn parse_main(input: &str) -> anyhow::Result<Value> {
-    let mut raw = ValueParser::parse(Rule::main, input)?;
-    let pair = raw.next().expect("There has to be a value in main!");
-    parse_value(pair)
+/// Utility function to parse a string into a value
+fn parse_starter<F, T>(
+    input: &str,
+    rule: Rule,
+    function: F,
+) -> anyhow::Result<T>
+where
+    F: FnOnce(Pair<Rule>) -> anyhow::Result<T>,
+{
+    let mut raw = ValueParser::parse(rule, input)?;
+    let pair = raw.next().unwrap();
+    function(pair)
+}
+
+pub fn parse_main_value(input: &str) -> anyhow::Result<Value> {
+    parse_starter(input, Rule::main_value, parse_value)
+}
+
+pub fn parse_main_type_identifier(
+    input: &str,
+) -> anyhow::Result<TypeIdentifier> {
+    parse_starter(input, Rule::main_type_identifier, parse_type_identifier)
+}
+
+pub fn parse_main_type(input: &str) -> anyhow::Result<Type> {
+    parse_starter(input, Rule::main_type, parse_generic_type)
 }
