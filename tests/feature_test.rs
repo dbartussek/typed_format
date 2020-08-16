@@ -13,6 +13,7 @@ enum Test {
     Bytes(Vec<u8>),
     String(String),
     Char(char),
+    Option(Option<()>),
 }
 
 #[test]
@@ -27,6 +28,8 @@ fn value_round_trip() {
         Test::Char(' '),
         Test::Char('\n'),
         Test::Char('\\'),
+        Test::Option(None),
+        Test::Option(Some(())),
     ];
 
     for it in &values {

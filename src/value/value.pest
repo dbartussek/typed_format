@@ -22,6 +22,10 @@ boolean = _{ bool_true | bool_false }
 bool_true = { "true" }
 bool_false = { "false" }
 
+option = _{ some | none }
+some = { "Some" ~ "(" ~ value ~ ")" }
+none = { "None" }
+
 generic_escape = _{ "\\" ~ ("\\" | "n" | "r" | "t" | "0") }
 
 string = ${ "\"" ~ string_inner ~ "\"" }
@@ -78,6 +82,7 @@ value = _{
     unit
 
     | boolean
+    | option
 
     | tuple_struct | tuple
     | named_struct

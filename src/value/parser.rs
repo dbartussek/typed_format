@@ -223,9 +223,16 @@ fn parse_char(pair: Pair<Rule>) -> anyhow::Result<Value> {
 
 fn parse_value(pair: Pair<Rule>) -> anyhow::Result<Value> {
     match pair.as_rule() {
+        Rule::unit => Ok(Value::Unit),
+
         Rule::number => parse_number(pair),
         Rule::string => parse_string(pair),
         Rule::value_char => parse_char(pair),
+
+        Rule::none => Ok(Value::Option(None)),
+        Rule::some => Ok(Value::Option(Some(Box::new(parse_value(
+            pair.into_inner().next().unwrap(),
+        )?)))),
 
         Rule::tuple => parse_tuple(pair),
         Rule::list => parse_list(pair),
