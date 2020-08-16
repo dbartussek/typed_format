@@ -32,6 +32,27 @@ pub enum Value {
     TupleStruct(TypeIdentifier, Vec<Value>),
 }
 
+#[derive(Copy, Clone, PartialOrd, PartialEq, Debug)]
+pub enum ParsedNumber {
+    I64(i64),
+    U64(u64),
+    F64(f64),
+}
+
+impl ParsedNumber {
+    pub fn parse(s: &str) -> Option<Self> {
+        Some(if let Ok(v) = s.parse() {
+            ParsedNumber::U64(v)
+        } else if let Ok(v) = s.parse() {
+            ParsedNumber::I64(v)
+        } else if let Ok(v) = s.parse() {
+            ParsedNumber::F64(v)
+        } else {
+            return None;
+        })
+    }
+}
+
 impl Value {
     pub fn try_new<S>(s: S) -> Result<Value, ValueSerializerError>
     where
@@ -72,5 +93,13 @@ impl Value {
         printer.write(self, &mut buffer).unwrap();
 
         buffer
+    }
+
+    pub fn parse_number(&self) -> Option<ParsedNumber> {
+        if let Value::Number(s) = self {
+            ParsedNumber::parse(&s)
+        } else {
+            None
+        }
     }
 }

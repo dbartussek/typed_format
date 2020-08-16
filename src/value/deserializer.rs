@@ -1,6 +1,6 @@
 use crate::value::{
     types::{GenericIdentifier, Identifier, Type, TypeIdentifier},
-    Value,
+    ParsedNumber, Value,
 };
 use anyhow::{anyhow, Context, Error};
 use serde::{
@@ -84,14 +84,24 @@ impl<'value, 'de> Deserializer<'de> for ValueDeserializer<'value> {
             Value::Bool(_) => self.deserialize_bool(visitor),
             Value::Char(_) => self.deserialize_char(visitor),
             Value::String(_) => self.deserialize_str(visitor),
-            Value::Number(_) => unimplemented!(),
-            Value::Type(_) => unimplemented!(),
-            Value::List(_) => unimplemented!(),
-            Value::Tuple(_) => unimplemented!(),
-            Value::Map(_) => unimplemented!(),
-            Value::Option(_) => unimplemented!(),
-            Value::Struct(_, _) => unimplemented!(),
-            Value::TupleStruct(_, _) => unimplemented!(),
+            Value::Number(v) => match ParsedNumber::parse(&v) {
+                Some(ParsedNumber::U64(v)) => visitor.visit_u64(v),
+                Some(ParsedNumber::I64(v)) => visitor.visit_i64(v),
+                Some(ParsedNumber::F64(v)) => visitor.visit_f64(v),
+                None => Err(ValueDeserializerError(anyhow!(
+                    "Could not parse '{}' as a number",
+                    v
+                ))),
+            },
+            Value::Type(_) => self.deserialize_identifier(visitor),
+            Value::List(_) => self.deserialize_seq(visitor),
+            Value::Tuple(_) => self.deserialize_tuple(0, visitor),
+            Value::Map(_) => self.deserialize_map(visitor),
+            Value::Option(_) => self.deserialize_option(visitor),
+            Value::Struct(_, _) => self.deserialize_struct("", &[], visitor),
+            Value::TupleStruct(_, _) => {
+                self.deserialize_tuple_struct("", 0, visitor)
+            },
         }
     }
 
@@ -449,12 +459,12 @@ impl<'value, 'de> Deserializer<'de> for ValueDeserializer<'value> {
 
     fn deserialize_ignored_any<V>(
         self,
-        _: V,
+        visitor: V,
     ) -> Result<<V as Visitor<'de>>::Value, Self::Error>
     where
         V: Visitor<'de>,
     {
-        unimplemented!()
+        self.deserialize_any(visitor)
     }
 }
 
