@@ -193,6 +193,7 @@ impl<'indent> ValuePrinter<'indent> {
     }
 }
 
+#[derive(Debug, Clone)]
 enum StrOrCharIterator<'lt> {
     Str(Chars<'lt>),
     Char(Option<char>),

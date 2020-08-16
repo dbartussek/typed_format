@@ -23,7 +23,7 @@ fn value_round_trip() {
         Test::Baz,
         Test::Map(hashmap! { 1 => 42, 2 => 5, 0 => 64}),
         Test::Bytes("Hello World".as_bytes().to_vec()),
-        Test::String("\tHello World\\Me!\n\0".to_string()),
+        Test::String("\tHello World\"\"\\Me!\n\0".to_string()),
         Test::Char(' '),
         Test::Char('\n'),
         Test::Char('\\'),

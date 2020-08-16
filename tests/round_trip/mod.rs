@@ -19,7 +19,9 @@ where
     T: Serialize + DeserializeOwned + PartialEq + Debug,
 {
     let value = Value::new(t);
-    let _string = value.to_string_pretty();
+    let string = value.to_string_pretty();
+
+    assert_parse(t, &value, &string);
 }
 
 /// Serializes T to String and back, then checks if they are equal
@@ -28,7 +30,22 @@ where
     T: Serialize + DeserializeOwned + PartialEq + Debug,
 {
     let value = Value::new(t);
-    let _string = value.to_string_compact();
+    let string = value.to_string_compact();
+
+    assert_parse(t, &value, &string);
+}
+
+fn assert_parse<T>(t: &T, value: &Value, string: &str)
+where
+    T: DeserializeOwned + PartialEq + Debug,
+{
+    let parsed_value = Value::parse(&string).unwrap();
+
+    assert_eq!(*value, parsed_value);
+
+    let deserialized: T = parsed_value.deserialize().unwrap();
+
+    assert_eq!(*t, deserialized);
 }
 
 pub fn all_asserts<T>(t: &T)

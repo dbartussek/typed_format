@@ -1,5 +1,6 @@
 pub mod deserializer;
 pub mod identifier;
+pub(crate) mod parser;
 pub mod printer;
 pub mod serializer;
 
@@ -43,6 +44,10 @@ impl Value {
         S: Serialize,
     {
         Self::try_new(s).unwrap()
+    }
+
+    pub fn parse(string: &str) -> anyhow::Result<Self> {
+        parser::parse_main(string)
     }
 
     pub fn deserialize<'lt, T>(&'lt self) -> Result<T, ValueDeserializerError>
