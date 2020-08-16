@@ -1,5 +1,5 @@
 use crate::value::{
-    types::{GenericIdentifier, Identifier, Type, TypeIdentifier},
+    types::{GenericIdentifier, Generics, Identifier, Type, TypeIdentifier},
     Value,
 };
 use anyhow::anyhow;
@@ -11,12 +11,27 @@ use std::{collections::BTreeMap, str::Chars};
 #[grammar = "value/value.pest"]
 struct ValueParser;
 
+fn extract_result<T, E>(x: Option<Result<T, E>>) -> Result<Option<T>, E> {
+    x.map_or(Ok(None), |v| v.map(Some))
+}
+
 fn parse_identifier(pair: Pair<Rule>) -> anyhow::Result<Identifier> {
     assert_eq!(pair.as_rule(), Rule::identifier);
     Ok(Identifier(pair.as_str().to_string()))
 }
 
 fn parse_type_identifier(pair: Pair<Rule>) -> anyhow::Result<TypeIdentifier> {
+    fn parse_generics(pair: Pair<Rule>) -> anyhow::Result<Generics> {
+        assert_eq!(pair.as_rule(), Rule::generics);
+
+        Ok(Generics {
+            types: pair
+                .into_inner()
+                .map(parse_generic_type)
+                .collect::<anyhow::Result<Vec<Type>>>()?,
+        })
+    }
+
     fn parse_generic_identifier(
         pair: Pair<Rule>,
     ) -> anyhow::Result<GenericIdentifier> {
@@ -26,16 +41,11 @@ fn parse_type_identifier(pair: Pair<Rule>) -> anyhow::Result<TypeIdentifier> {
 
         let identifier = parse_identifier(pairs.next().unwrap())?;
 
-        if let Some(generic) = pairs.next() {
-            return Err(anyhow!(
-                "Generic identifiers are not supported {:?}",
-                generic
-            ));
-        }
+        let generics = extract_result(pairs.next().map(parse_generics))?;
 
         Ok(GenericIdentifier {
             identifier,
-            generics: None,
+            generics,
         })
     }
 
@@ -55,6 +65,20 @@ fn parse_generic_type(pair: Pair<Rule>) -> anyhow::Result<Type> {
     Ok(match inner.as_rule() {
         Rule::type_identifier => {
             Type::TypeIdentifier(parse_type_identifier(inner)?)
+        },
+        Rule::tuple_type => Type::Tuple(
+            inner
+                .into_inner()
+                .map(parse_generic_type)
+                .collect::<anyhow::Result<Vec<Type>>>()?,
+        ),
+        Rule::array_type => {
+            let mut inner = inner.into_inner();
+
+            let content = Box::new(parse_generic_type(inner.next().unwrap())?);
+            let size = inner.next().unwrap().as_str().to_string();
+
+            Type::Array { content, size }
         },
         _ => return Err(anyhow!("Unknown type: {:#?}", &inner)),
     })

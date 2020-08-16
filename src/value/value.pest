@@ -15,7 +15,7 @@ generic_identifier = { identifier ~ generics? }
 generics = { "<" ~ (generic_type ~ ",")* ~ generic_type ~ ">" }
 type_identifier = { generic_identifier ~ ("::" ~ generic_identifier)* }
 
-array_type = { "[" ~ type_identifier ~ ";" ~ array_size ~ "]" }
+array_type = { "[" ~ generic_type ~ ";" ~ array_size ~ "]" }
 array_size = @{ "0" | (ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*) }
 
 tuple_type = { "(" ~ (generic_type ~ ",")* ~ generic_type? ~ ")" }

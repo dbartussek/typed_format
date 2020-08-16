@@ -7,7 +7,8 @@ where
 {
     let name = type_name::<T>();
     println!("Type name: '{}'", name);
-    Type::parse(name).unwrap();
+    let t = Type::parse(name).unwrap();
+    println!("Parsed as {:#?}", &t);
 }
 
 #[test]
@@ -45,6 +46,11 @@ pub fn parse_vec_of_tuple() {
 #[test]
 pub fn parse_array() {
     parse_type::<[usize; 42]>();
+}
+
+#[test]
+pub fn parse_nested_array() {
+    parse_type::<[[usize; 1]; 42]>();
 }
 
 #[test]
